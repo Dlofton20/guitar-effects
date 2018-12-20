@@ -1,35 +1,65 @@
-const base = require("./base-nodes")
+"use strict";
 
-const BouncingBastard = function(ctx, options) {
-  options = Object.assign({}, BouncingBastard.defaults, options)
+(function() {
 
-  const level    = ctx.createGain()
-  const delay    = ctx.createDelay()
-  const feedback = ctx.createGain()
-  const node     = new base.Node(ctx, [level, delay, feedback], options.on)
+$.get("pedals/pitchshifter.html", function(data) {
 
-  node.name = "Bouncing Boulder"
-  node.type = "Delay"
-  node.initialValues = options
+  var ui = $(data).appendTo($("#pedalboard"));
 
-  level.connect(node.output)
-  feedback.connect(delay)
+  var pitchshift = new Tone.PitchShift(12);
+  pitchshift.wet.value = 0.5;
+  var bypassed = false;
 
-  node.knobs = [
-    new base.Knob("time", {min: 0, max: 1}, options.time, (x) => {
-      delay.delayTime.value = x
-    }),
-    new base.Knob("feedback", {min: 0, max: 1}, options.feedback, (x) => {
-      feedback.gain.value = x
-    }),
-    new base.Knob("level", {min: 0, max: 1}, options.level, (x) => {
-      level.gain.value = x
-    })
-  ]
+  $(ui).find(".pitchshifterpitch").knob({
+    "release": function(v) {
+      pitchshift.pitch = v;
+    }
+  });
 
-  return node
-}
+  $(ui).find(".pitchshiftermix").knob({
+    "release": function(v) {
+      if (!bypassed) pitchshift.wet.value = v/100;
+    }
+  });
 
-BouncingBastard.defaults = {time: 0.5, feedback: 5, level: 10}
+  $(ui).find(".bypass").click(function() {
+    $(this).toggleClass("on");
+    bypassed = !$(this).hasClass("on");
+    if (bypassed) {
+      pitchshift.wet.value = 0;
+    } else {
+      pitchshift.wet.value = $(ui).find(".pitchshiftermix").val()/100;
+    }
+  });
 
-module.exports = BouncingBastard
+  var getValues = function() {
+    return "pitchshifter," +
+      $(ui).find(".pitchshifterpitch").val() + "," +
+      $(ui).find(".pitchshiftermix").val() + "," +
+      (+bypassed);
+  };
+
+  var setValues = function(values) {
+    var val = values.split(",");
+    $(ui).find(".pitchshifterpitch").val(val[1]).trigger("change");
+    $(ui).find(".pitchshiftermix").val(val[2]).trigger("change");
+    if ($(ui).find(".bypass").hasClass("on") == val[3]) {
+      $(ui).find(".bypass").click();
+    }
+  }
+
+  pedals.push({
+    nodes: [pitchshift],
+    type: "pitchshifter",
+    ui: ui,
+    getValues: getValues,
+    setValues: setValues
+  });
+
+  rewire();
+
+}).done(function() {
+  if (queuedScripts.length > 0) $.getScript(queuedScripts.shift());
+});
+
+})();
