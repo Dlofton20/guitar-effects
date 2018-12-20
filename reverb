@@ -1,0 +1,6 @@
+var reverb = new Pizzicato.Effects.Reverb({
+    time: 0.01,
+    decay: 0.01,
+    reverse: false,
+    mix: 0.5
+});
